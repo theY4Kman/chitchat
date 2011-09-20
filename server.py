@@ -295,7 +295,20 @@ def startapp(args):
     @app.route('/adminueqytMXDDS/tags/add/', methods=['POST'])
     def admin_tags_add():
         tags.addtag(flask.request.form['key'], flask.request.form['tag'])
-        return json.dumps(tags.gettags(flask.request.form['key']))
+        return 'OK'
+    
+    @app.route('/adminueqytMXDDS/tags/remove/', methods=['POST'])
+    def admin_tags_remove():
+        tags.removetag(flask.request.form['key'], flask.request.form['tag'])
+        return 'OK'
+    
+    @app.route('/adminueqytMXDDS/tags/get/', methods=['POST'])
+    def admin_tags_get():
+        t = tags.gettags(flask.request.form['key'])
+        if t is None:
+            return '[]'
+        
+        return json.dumps(list(t))
 
     @app.route('/adminueqytMXDDS/tags/')
     def admin_tags():
@@ -357,7 +370,7 @@ def startapp(args):
             
             games.append(game)
         
-        return flask.render_template('tags.htm', games=games, util=util)
+        return flask.render_template('tags.htm', games=games, util=util, tags=tags)
     
     @app.route('/adminueqytMXDDS/table')
     def admin_table():

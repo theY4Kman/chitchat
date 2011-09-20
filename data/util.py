@@ -88,7 +88,7 @@ class Util(object):
             conds[cond].append(key)
         return conds
     
-    def get_completed_game_conds_num(self):
+    def get_completed_game_conds_num(self, mturk=True):
         '''Returns the number of completed games separated into their conds'''
-        conds = self.get_completed_game_conds()
+        conds = self.get_completed_game_conds(mturk)
         return dict(zip(conds.keys(), map(len, conds.values())))

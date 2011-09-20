@@ -9,28 +9,22 @@ class Tagging(object):
         self.db = db
     
     def addtags(self, key, tags):
-        try:
-            for tag in tags:
-                self.db.sadd('tag_group:' + tag, key)
-                self.db.sadd('tags:' + key, tag)
-        except TypeError:
+        for tag in tags:
             self.db.sadd('tag_group:' + tag, key)
             self.db.sadd('tags:' + key, tag)
     
     def addtag(self, key, tag):
-        return self.addtags(*args)
+        self.db.sadd('tag_group:' + tag, key)
+        self.db.sadd('tags:' + key, tag)
     
     def removetags(self, key, tags):
-        try:
-            for tag in tags:
-                self.db.srem('tag_group:' + tag, key)
-                self.db.srem('tags:' + key, tag)
-        except TypeError:
+        for tag in tags:
             self.db.srem('tag_group:' + tag, key)
             self.db.srem('tags:' + key, tag)
     
     def removetag(self, key, tag):
-        return self.removetags(*args)
+        self.db.srem('tag_group:' + tag, key)
+        self.db.srem('tags:' + key, tag)
     
     def gettags(self, key):
         if not self.db.exists('tags:' + key):
@@ -41,3 +35,11 @@ class Tagging(object):
         if not self.db.exists('tag_group:' + tag):
             return None
         return self.db.smembers('tag_group:' + tag)
+    
+    def gettagnames(self):
+        return [key.split(':')[1] for key in self.db.keys('tag_group:*')][::-1]
+    
+    def hastag(self, key, tag):
+        if not self.db.exists('tags:' + key):
+            return False
+        return self.db.sismember('tags:' + key, tag)

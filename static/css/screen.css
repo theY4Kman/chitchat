@@ -410,5 +410,23 @@ button.yours.unpushable.insurer:hover { background-color: #404635 !important; }
 
 /* Admin Tagging */
 .admin.tagging h3 { margin: 0; }
-.admin.tagging tr.head { padding: 2px 5px; }
+.admin.tagging th { text-align: left; }
+.admin.tagging tr.head {
+  padding: 2px 5px;
+}
+.admin.tagging tr.head h3:hover {
+  cursor: pointer;
+  cursor: hand;
+  text-decoration: underline;
+}
 .admin.tagging tr.head.alt { background-color: #EEE; }
+.admin.tagging .hastag { background-color: #4EF46F !important; }
+.admin.tagging .notag { background-color: #F78282 !important; }
+.admin.tagging .blanktag { background-color: #F78282 !important; }
+.admin.tagging tr.body td {
+  background-color: #EEE;
+  padding-left: 10px;
+}
+.admin.tagging tr.body td[tagname]:hover {
+  text-decoration: underline;
+}

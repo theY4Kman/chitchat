@@ -1,3 +1,4 @@
+{% macro tagclass(boolean) %}{% if boolean == None %}blanktag{% elif boolean %}hastag{% else %}notag{% endif %}{% endmacro -%}
 {% macro answers(user) -%}
 {% if not user.answers.none -%}
               <ol>
@@ -40,11 +41,277 @@
     <script type="text/javascript" src="/js/jquery-1.6.2.min.js"></script>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
     <script type="text/javascript">
-        $(function(){
-            $('#games tr.head').click(function() {
+        function togglehastag(tag)
+        {
+            $('#games tr.head td.hastag[tagname="' + tag + '"]').parent().toggle().next().hide();
+        }
+        function hidehastag(tag)
+        {
+            $('#games tr.head td.hastag[tagname="' + tag + '"]').parent().hide().next.hide();
+        }
+        function showhastag(tag)
+        {
+            $('#games tr.head td.hastag[tagname="' + tag + '"]').parent().show();
+        }
+        
+        function showAllTag(tag)
+        {
+            $('#games tr.head td[tagname="' + tag + '"]').parent().show();
+        }
+        function hideTagFalse(tag)
+        {
+            $('#games tr.head td.notag[tagname="' + tag + '"]').parent().hide().next().hide();
+        }
+        function hideTagTrue(tag)
+        {
+            $('#games tr.head td.hastag[tagname="' + tag + '"]').parent().hide().next().hide();
+        }
+        
+        function fixAlt()
+        {
+            var elems = $('tr.head:visible');
+            for (var i in elems.toArray())
+            {
+                if (i % 2 == 1)
+                    $(elems[i]).addClass('alt');
+                else
+                    $(elems[i]).removeClass('alt');
+            }
+        }
+        
+        var tags = {};
+        var SHOW_ALL = 0;
+        var HIDE_FALSE = 1;
+        var HIDE_TRUE = 2;
+        
+        function filtertags(tags)
+        {
+            var rowtags = $('#games tr.head td[tagname]');
+            var filtered = false;
+            $('#games tr.head').hide().next().hide();
+            
+            for (tag in tags)
+                if (tags[tag] == HIDE_FALSE)
+                {
+                    rowtags = rowtags.filter('.hastag[tagname="' + tag + '"]')
+                        .siblings('[tagname]').andSelf();
+                    filtered = true;
+                }
+                else if (tags[tag] == HIDE_TRUE)
+                {
+                    rowtags = rowtags.filter('.notag[tagname="' + tag + '"]')
+                        .siblings('[tagname]').andSelf();
+                    filtered = true;
+                }
+            
+            if (filtered)
+                rowtags.parent().show();
+            else
+                $('#games tr.head').show();
+            
+            fixAlt();
+        }
+        
+        function cycletag(tag)
+        {
+            if (typeof tags[tag] == 'undefined')
+                tags[tag] = SHOW_ALL;
+            
+            if (++tags[tag] > HIDE_TRUE)
+                tags[tag] = SHOW_ALL;
+            
+            var elem = $('th[tagname="' + tag +'"]');
+            switch (tags[tag])
+            {
+            case SHOW_ALL:
+                elem.removeClass('hastag notag blanktag');
+                break;
+            
+            case HIDE_FALSE:
+                elem.addClass('hastag').removeClass('notag');
+                break;
+            
+            case HIDE_TRUE:
+                elem.removeClass('hastag').addClass('notag');
+                break;
+            }
+            
+            filtertags(tags);
+        }
+        
+        function addtag(key, tag, callback)
+        {
+            $.post('add/', {key: key, tag: tag}, callback, 'json');
+        }
+        function removetag(key, tag, callback)
+        {
+            $.post('remove/', {key: key, tag: tag}, callback, 'json');
+        }
+        
+        function setHasTag(elem)
+        {
+            elem.html('True').addClass('hastag').removeClass('notag blanktag');
+        }
+        function setNoTag(elem)
+        {
+            elem.html('False').addClass('notag').removeClass('hastag blanktag');
+        }
+        
+        function clickTag(elem)
+        {
+            if (elem.attr('tagname') == 'has_chat' || elem.attr('tagname') == 'is_mturk')
+                return;
+            
+            if (elem.hasClass('hastag'))
+            {
+                removetag(elem.parent().attr('gamekey'), elem.attr('tagname'));
+                setNoTag(elem);
+            }
+            else if (elem.hasClass('notag'))
+            {
+                addtag(elem.parent().attr('gamekey'), elem.attr('tagname'));
+                setHasTag(elem);
+            }
+        }
+        
+        $(function()
+        {
+            (function($){
+              var ph = "PLACEHOLDER-INPUT";
+              var phl = "PLACEHOLDER-LABEL";
+              var boundEvents = false;
+              var default_options = {
+                labelClass: 'placeholder'
+              };
+              
+              //check for native support for placeholder attribute, if so stub methods and return
+              var input = document.createElement("input");
+              if ('placeholder' in input) {
+                $.fn.placeholder = $.fn.unplaceholder = function(){}; //empty function
+                delete input; //cleanup IE memory
+                return;
+              };
+              delete input;
+
+              $.fn.placeholder = function(options) {
+                bindEvents();
+
+                var opts = $.extend(default_options, options)
+
+                this.each(function(){
+                  var rnd=Math.random().toString(32).replace(/\./,'')
+                    ,input=$(this)
+                    ,label=$('<label style="position:absolute;display:none;top:0;left:0;"></label>');
+
+                  if (!input.attr('placeholder') || input.data(ph) === ph) return; //already watermarked
+
+                  //make sure the input tag has an ID assigned, if not, assign one.
+                  if (!input.attr('id')) input.attr('id') = 'input_' + rnd;
+
+                  label	.attr('id',input.attr('id') + "_placeholder")
+                      .data(ph, '#' + input.attr('id'))	//reference to the input tag
+                      .attr('for',input.attr('id'))
+                      .addClass(opts.labelClass)
+                      .addClass(opts.labelClass + '-for-' + this.tagName.toLowerCase()) //ex: watermark-for-textarea
+                      .addClass(phl)
+                      .text(input.attr('placeholder'));
+
+                  input
+                    .data(phl, '#' + label.attr('id'))	//set a reference to the label
+                    .data(ph,ph)		//set that the field is watermarked
+                    .addClass(ph)		//add the watermark class
+                    .after(label);		//add the label field to the page
+
+                  //setup overlay
+                  itemIn.call(this);
+                  itemOut.call(this);
+                });
+              };
+
+              $.fn.unplaceholder = function(){
+                this.each(function(){
+                  var	input=$(this),
+                    label=$(input.data(phl));
+
+                  if (input.data(ph) !== ph) return;
+                    
+                  label.remove();
+                  input.removeData(ph).removeData(phl).removeClass(ph);
+                });
+              };
+
+
+              function bindEvents() {
+                if (boundEvents) return;
+
+                //prepare live bindings if not already done.
+                $('.' + ph)
+                  .live('click',itemIn)
+                  .live('focusin',itemIn)
+                  .live('focusout',itemOut);
+                bound = true;
+
+                boundEvents = true;
+              };
+
+              function itemIn() {
+                var input = $(this)
+                  ,label = $(input.data(phl));
+
+                label.css('display', 'none');
+              };
+
+              function itemOut() {
+                var that = this;
+
+                //use timeout to let other validators/formatters directly bound to blur/focusout work first
+                setTimeout(function(){
+                  var input = $(that);
+                  $(input.data(phl))
+                    .css('top', input.position().top + 'px')
+                    .css('left', input.position().left + 'px')
+                    .css('display', !!input.val() ? 'none' : 'block');
+                }, 200);
+              };
+
+            }(jQuery));
+            
+            $('#games tr.head h3').click(function() {
+                $(this).parent().parent().next().toggle();
+                return false;
+            }).parent().parent().next().hide();
+            
+            $('.post_questionnaires h4').click(function() {
                 $(this).next().toggle();
                 return false;
             }).next().hide();
+            
+            $('#games thead th[tagname]').click(function() {
+                cycletag($(this).attr('tagname'));
+            })
+            
+            $('input[placeholder]').keypress(function(e)
+            {
+                var code = (e.keyCode ? e.keyCode : e.which);
+                if (code != 13)
+                    return;
+                
+                var tag = $(this).val();
+                $(this).val('');
+                
+                if ($('th[tagname="' + tag + '"]').length > 0)
+                    return;
+                
+                $('thead tr').append('<th tagname="' + tag +'">' + tag + '</th>');
+                $('tr.head').append('<td class="notag" tagname="' + tag + '">False</td>');
+                $('#games td[tagname="' + tag + '"]').click(function() {
+                    clickTag($(this));
+                });
+            }).placeholder();
+            
+            $('#games td[tagname]').click(function() {
+                clickTag($(this));
+            });
         });
     </script>
     <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
@@ -52,21 +319,28 @@
   <body class="admin tagging">
     <div id="content">
       <h2>TAGGALORE</h2>
-      <table id="games">
+      <input type="text" placeholder="Add tag" />
+      <table id="games" width="80%">
         <thead>
           <tr>
-            <th>Key</th>
-            <th>Has chat</td>
-            <th>All Mturk</th>
+            <th width="40%">Key</th>
+            <th tagname="has_chat">Has chat</td>
+            <th tagname="is_mturk">All Mturk</th>
+{%- for tag in tags.gettagnames() %}
+            <th tagname="{{ tag }}">{{ tag }}</th>
+{%- endfor -%}
           </tr>
         </thead>
         <tbody>
-{% for game in games %}          <tr class="head {% cycle '' 'alt' %}">
-            <td><h3>Game {{ util.gamekey(game.key) }}</h3></td>
-            <td>{{ game.has_chat }}</td>
-            <td>{{ util.is_game_mturk(util.gamekey(game.key)) }}</td>
+{% for game in games %}          <tr class="head {{ loop.cycle('', 'alt') }}" gamekey="{{ game.key }}">
+            <td><h3>{{ util.gamekey(game.key) }}</h3></td>
+            <td class="{{ tagclass(game.has_chat) }}" tagname="has_chat">{{ game.has_chat }}</td>
+            <td class="{{ tagclass(util.is_game_mturk(util.gamekey(game.key))) }}" tagname="is_mturk">{{ util.is_game_mturk(util.gamekey(game.key)) }}</td>
+{%- for tag in tags.gettagnames() %}
+            <td class="{{ tagclass(tags.hastag(game.key, tag)) }}" tagname="{{ tag }}">{{ tags.hastag(game.key, tag) }}</td>
+{%- endfor -%}
           </tr>
-          <tr>
+          <tr class="body">
             <td colspan="50">
               <div class="messages">
                 <div class="buyer_insurer_chat lfloat">
