@@ -407,6 +407,14 @@ button.yours.unpushable.insurer:hover { background-color: #404635 !important; }
 .admin .post_questionnaires h4 { color: #AAF575 !important; }
 .admin .post_questionnaires h4.noanswers { color: #EC6565 !important; }
 
+.admin .time {
+  border-bottom: 1px solid black;
+  border-top: 1px solid black;
+  font-style: normal !important;
+  font-weight: normal !important;
+  margin-right: 4px;
+}
+
 
 /* Admin Tagging */
 .admin.tagging h3 { margin: 0; }

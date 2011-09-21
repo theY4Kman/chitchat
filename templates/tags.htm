@@ -1,3 +1,4 @@
+{% macro fmttime(seconds) %}[{{ (seconds / 60)|int }}:{% if (seconds % 60 < 10) %}0{% endif %}{{ (seconds % 60)|int }}]{% endmacro -%}
 {% macro tagclass(boolean) %}{% if boolean == None %}blanktag{% elif boolean %}hastag{% else %}notag{% endif %}{% endmacro -%}
 {% macro answers(user) -%}
 {% if not user.answers.none -%}
@@ -79,16 +80,19 @@
             }
         }
         
+        var searchtags = [];
         var tags = {};
         var SHOW_ALL = 0;
         var HIDE_FALSE = 1;
         var HIDE_TRUE = 2;
         
-        function filtertags(tags)
+        function filtertags(tags, use_oldset)
         {
-            var rowtags = $('#games tr.head td[tagname]');
             var filtered = false;
             $('#games tr.head').hide().next().hide();
+            
+            match_tags(searchtags).show();
+            var rowtags = $('#games tr.head:visible td[tagname]');
             
             for (tag in tags)
                 if (tags[tag] == HIDE_FALSE)
@@ -104,7 +108,8 @@
                     filtered = true;
                 }
             
-            if (filtered)
+            $('#games tr.head').hide().next().hide();
+            if (filtered || searchtags.length > 0)
                 rowtags.parent().show();
             else
                 $('#games tr.head').show();
@@ -187,6 +192,43 @@
                 addtag(elem.parent().attr('gamekey'), elem.attr('tagname'), 'game');
                 setHasTag(elem);
             }
+        }
+        
+        function match_tags(match)
+        {
+            var tags_elem = $('textarea.chattags').add('textarea.usertags');
+            var elems = new Array();
+            
+            for (var i in tags_elem)
+            {
+                if (typeof tags_elem[i] != "object")
+                    continue;
+                
+                var e = $(tags_elem[i]);
+                var tags = e.val().split(',');
+                var matched = true;
+                
+                for (var j in match)
+                {
+                    if (tags.indexOf(match[j]) == -1)
+                    {
+                        matched = false;
+                        break;
+                    }
+                }
+                
+                if (matched)
+                    elems.push(tags_elem[i]);
+            }
+            
+            return $(elems).parents('.body').prev();
+        }
+        
+        function search_tags(match)
+        {
+            $('#games tr.head').hide().next().hide();
+            filtertags(tags, true);
+            fixAlt();
         }
         
         $(function()
@@ -305,7 +347,18 @@
                 cycletag($(this).attr('tagname'));
             })
             
-            $('input[placeholder]').keypress(function(e)
+            $('input[placeholder]').placeholder();
+            $('#searchtags').keypress(function(e)
+            {
+                var code = (e.keyCode ? e.keyCode : e.which);
+                if (code != 13)
+                    return;
+                
+                searchtags = $(this).val().split(',');
+                search_tags(searchtags);
+            });
+            
+            $('#addtag').keypress(function(e)
             {
                 var code = (e.keyCode ? e.keyCode : e.which);
                 if (code != 13)
@@ -322,13 +375,13 @@
                 $('#games td[tagname="' + tag + '"]').click(function() {
                     clickTag($(this));
                 });
-            }).placeholder();
+            });
             
             $('#games td[tagname]').click(function() {
                 clickTag($(this));
             });
             
-            $('textarea.chattags').keypress(function(e)
+            $('textarea.chattags').add('textarea.usertags').keypress(function(e)
             {
                 var code = (e.keyCode ? e.keyCode : e.which);
                 if (code != 13)
@@ -337,6 +390,10 @@
                 updatetags($(this).parents('.body').prev().attr('gamekey'), $(this).val().split(','), $(this).attr('prefix'));
                 
                 return false;
+            })
+            .blur(function()
+            {
+                updatetags($(this).parents('.body').prev().attr('gamekey'), $(this).val().split(','), $(this).attr('prefix'));
             });
         });
     </script>
@@ -345,7 +402,9 @@
   <body class="admin tagging">
     <div id="content">
       <h2>TAGGALORE</h2>
-      <input type="text" placeholder="Add tag" />
+      <input type="text" id="addtag" placeholder="Add tag" />
+      <br />
+      <input type="text" id="searchtags" placeholder="Search tags">
       <table id="games" width="80%">
         <thead>
           <tr>
@@ -372,7 +431,7 @@
                 <div class="buyer_insurer_chat lfloat">
                   <h4>Buyer to Mediator</h4>
                   <div class="chatmessages" id="buyer_chatmessages">{% for evt in game.buyer_log %}
-                    <div class="message {{ evt.from }}{% if evt.name != 'chat' %} event{% endif %}">{% if evt.name == 'chat' %}{{ evt.message }}{% else %}*** {{ evt.from|capitalize }} gave {% if evt.name == 'send_token' %}the token{% else %}25c{% endif %} to {{ evt.to|capitalize }}{% endif %}</div>{% endfor %}
+                    <div class="message {{ evt.from }}{% if evt.name != 'chat' %} event{% endif %}"><span class="time">{{ fmttime(evt.time - game.starttime) }}</span>{% if evt.name == 'chat' %}{{ evt.message }}{% else %}*** {{ evt.from|capitalize }} gave {% if evt.name == 'send_token' %}the token{% else %}25c{% endif %} to {{ evt.to|capitalize }}{% endif %}</div>{% endfor %}
                   </div>
                   <textarea class="chattags" prefix="buyer_insurer" placeholder="Buyer to Mediator tags, CSV">{{ tags.gettags(game.key, 'buyer_insurer')|default([], true)|join(',') }}</textarea>
                   <textarea class="chattags" prefix="insurer_buyer" placeholder="Mediator to Buyer tags, CSV">{{ tags.gettags(game.key, 'insurer_buyer')|default([], true)|join(',') }}</textarea>
@@ -380,7 +439,7 @@
                 <div class="seller_insurer_chat lfloat" style="margin-left: 20px;">
                   <h4>Seller to Mediator</h4>
                   <div class="chatmessages" id="seller_chatmessages">{% for evt in game.seller_log %}
-                    <div class="message {{ evt.from }}{% if evt.name != 'chat' %} event{% endif %}">{% if evt.name == 'chat' %}{{ evt.message }}{% else %}*** {{ evt.from|capitalize }} gave {% if evt.name == 'send_token' %}the token{% else %}25c{% endif %} to {{ evt.to|capitalize }}{% endif %}</div>{% endfor %}
+                    <div class="message {{ evt.from }}{% if evt.name != 'chat' %} event{% endif %}"><span class="time">{{ fmttime(evt.time - game.starttime) }}</span>{% if evt.name == 'chat' %}{{ evt.message }}{% else %}*** {{ evt.from|capitalize }} gave {% if evt.name == 'send_token' %}the token{% else %}25c{% endif %} to {{ evt.to|capitalize }}{% endif %}</div>{% endfor %}
                   </div>
                   <textarea class="chattags" prefix="seller_insurer" placeholder="Seller to Mediator tags, CSV">{{ tags.gettags(game.key, 'seller_insurer')|default([], true)|join(',') }}</textarea>
                   <textarea class="chattags" prefix="insurer_seller" placeholder="Mediator to Seller tags, CSV">{{ tags.gettags(game.key, 'insurer_seller')|default([], true)|join(',') }}</textarea>
@@ -389,14 +448,17 @@
                   <h4 class="{% if game.insurer.answers.none %}noanswers{% endif %}">Buyer - {{ game.buyer.key }}{% if game.buyer.is_mturk %} (MTURK){% endif %}</h4>
                   <div class="post_answers post_buyer">
       {{ answers(game.buyer) }}
+                    <textarea class="usertags" prefix="buyer" placeholder="Buyer tags, CSV">{{ tags.gettags(game.key, 'buyer')|default([], true)|join(',') }}</textarea>
                   </div>
                   <h4 class="{% if game.insurer.answers.none %}noanswers{% endif %}">Seller - {{ game.seller.key }}{% if game.seller.is_mturk %} (MTURK){% endif %}</h4>
                   <div class="post_answers post_seller">
       {{ answers(game.seller) }}
+                    <textarea class="usertags" prefix="seller" placeholder="Seller tags, CSV">{{ tags.gettags(game.key, 'seller')|default([], true)|join(',') }}</textarea>
                   </div>
                   <h4 class="{% if game.insurer.answers.none %}noanswers{% endif %}">Mediator - {{ game.insurer.key }}{% if game.insurer.is_mturk %} (MTURK){% endif %}</h4>
                   <div class="post_answers post_insurer">
       {{ answers(game.insurer) }}
+                    <textarea class="usertags" prefix="insurer" placeholder="Mediator tags, CSV">{{ tags.gettags(game.key, 'insurer')|default([], true)|join(',') }}</textarea>
                   </div>
                 </div>
               </div>

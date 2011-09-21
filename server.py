@@ -252,6 +252,7 @@ def startapp(args):
             for event in events:
                 event = json.loads(event)
                 event['data']['name'] = event['name']
+                event['data']['time'] = event['time']
                 
                 if event['name'] == 'chat':
                     game['has_chat'] = True
@@ -332,7 +333,8 @@ def startapp(args):
                 'buyer_log': [],
                 'seller_log': [],
                 'has_chat': False,
-                'cond': state['condition']
+                'cond': state['condition'],
+                'starttime': float(state['starttime'])
             }
             
             for role in ('buyer', 'seller', 'insurer'):
@@ -349,6 +351,7 @@ def startapp(args):
             for event in events:
                 event = json.loads(event)
                 event['data']['name'] = event['name']
+                event['data']['time'] = event['time']
                 
                 if event['name'] == 'chat':
                     game['has_chat'] = True

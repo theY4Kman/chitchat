@@ -1,13 +1,15 @@
 import redis
 import json
+import tags
 
 class Util(object):
-    __slots__ = ['db', 'mturk_users', 'notified_workers', 'games']
+    __slots__ = ['db', 'tags', 'mturk_users', 'notified_workers', 'games']
     
     def __init__(self, db=None, port=9201):
         if db is None:
             db = redis.Redis(port=port)
         self.db = db
+        self.tags = tags.Tagging(db)
         
         self.refresh_data()
     
@@ -61,6 +63,11 @@ class Util(object):
             return None
         return json.loads(self.db['game:' + gamekey])
     
+    def gameevents(self, gamekey):
+        if not self.db.exists('events_game:' + gamekey):
+            return None
+        return map(json.loads, self.db.zrange('events_game:' + gamekey, 0, -1))
+    
     def gamecond(self, gamekey):
         '''Returns the game condition'''
         if not self.db.exists('game:' + gamekey):
@@ -73,11 +80,12 @@ class Util(object):
     
     def get_completed_games(self):
         '''Returns the gamekeys for all the completed games'''
-        return filter(self.is_game_complete, self.games)
+        return filter(lambda k: not self.tags.hastag('game:'+k, 'disregard', 'game'),
+            filter(self.is_game_complete, self.games))
     
     def get_completed_mturk_games(self):
         '''Returns the gamekeys for all the completed games'''
-        return filter(self.is_game_mturk, filter(self.is_game_complete, self.games))
+        return filter(self.is_game_mturk, self.get_completed_games())
     
     def get_completed_game_conds(self, mturk=True):
         '''Returns a dict with keys for the condition numbers and a list of
@@ -92,3 +100,46 @@ class Util(object):
         '''Returns the number of completed games separated into their conds'''
         conds = self.get_completed_game_conds(mturk)
         return dict(zip(conds.keys(), map(len, conds.values())))
+    
+    def get_completed_game_cond_events(self, mturk=True):
+        '''Returns all the events for every game completed, sorted in conds'''
+        conds = self.get_completed_game_conds(mturk)
+        for cond,gamekeys in conds.iteritems():
+            conds[cond] = map(self.gameevents, gamekeys)
+        return conds
+    
+    def get_completed_game_cond_chats(self, mturk=True):
+        '''Returns all the chat logs for every game completed, sorted in conds'''
+        conds = self.get_completed_game_cond_events(mturk)
+        for cond,games in conds.iteritems():
+            for x,game in enumerate(games):
+                chats = []
+                for events in game:
+                    if events['name'] != 'chat':
+                        continue
+                    
+                    name = ''
+                    for role in ('buyer', 'seller'):
+                        if events['data']['chatbox'] == role:
+                            name = '%s-to-mediator' % role
+                            if events['data']['from'] == 'insurer':
+                                name = 'mediator-to-%s' % role
+                    
+                    chats.append((name, events['data']['message']))
+                conds[cond][x] = chats
+        
+        return conds
+    
+    def get_word_counts(self, mturk=True):
+        '''Get the combined word counts for all player chat types'''
+        conds = self.get_completed_game_cond_chats(mturk)
+        wordcount = {}
+        
+        for cond,chatlogs in conds.items():
+            for chatlog in chatlogs:
+                for name,message in chatlog:
+                    if name not in wordcount:
+                        wordcount[name] = 0
+                    wordcount[name] += len(message.split())
+        
+        return wordcount
