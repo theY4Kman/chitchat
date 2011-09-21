@@ -144,3 +144,52 @@ class Util(object):
                     wordcount[name] += len(message.split())
         
         return wordcount
+    
+    def get_user_tagnames(self):
+        '''Get all the tag names applied to users and chats'''
+        tags = set()
+        for prefix in ('buyer_insurer', 'seller_insurer', 'insurer_buyer',
+            'insurer_seller', 'insurer', 'buyer', 'seller'):
+            tags.update(self.tags.gettagnames(prefix))
+        tags.remove('')
+        return tags
+    
+    def get_user_tag_count(self, tag):
+        '''Get the number of times a tag appears against users and chats'''
+        prefixes = {
+            'buyer_insurer': 0,
+            'seller_insurer': 0,
+            'insurer_buyer': 0,
+            'insurer_seller': 0,
+            'insurer': 0,
+            'buyer': 0,
+            'seller': 0
+        }
+        
+        for prefix in prefixes.keys():
+            prefixes[prefix] = len(self.tags.getkeys(tag, prefix) or [])
+        
+        return prefixes
+    
+    def get_cond_tag_count(self, tag):
+        '''Get the number of times a tag appears against the game conditions'''
+        conds = {1:0, 2:0, 3:0}
+        for prefix in ('buyer_insurer', 'seller_insurer', 'insurer_buyer',
+            'insurer_seller', 'insurer', 'buyer', 'seller'):
+            for gamekey in self.tags.getkeys(tag, prefix) or []:
+                conds[self.gamecond(self.gamekey(gamekey))] += 1
+        
+        return conds
+    
+    def get_combined_tag_count(self, tag):
+        '''Get the appearance count of a tag against conditions, users, and
+        chats'''
+        return {
+            'users': self.get_user_tag_count(tag),
+            'conds': self.get_cond_tag_count(tag),
+        }
+    
+    def get_all_tag_counts(self):
+        '''Get all the combined tag appearance counts'''
+        return dict([(k,self.get_combined_tag_count(k)) for k in self.get_user_tagnames()])
+        
