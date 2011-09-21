@@ -53,7 +53,7 @@ class Util(object):
     
     def gamekey(self, key):
         '''Strips "game:" from a full redis key to produce a gamekey'''
-        return key.split(':')[-1]
+        return key.split(':', 1)[-1]
     
     def gamestate(self, gamekey):
         '''Returns the entire game state dict'''

@@ -294,17 +294,25 @@ def startapp(args):
     
     @app.route('/adminueqytMXDDS/tags/add/', methods=['POST'])
     def admin_tags_add():
-        tags.addtag(flask.request.form['key'], flask.request.form['tag'])
+        tags.addtag(flask.request.form['key'], flask.request.form['tag'],
+            flask.request.form['prefix'])
+        return 'OK'
+    
+    @app.route('/adminueqytMXDDS/tags/update/', methods=['POST'])
+    def admin_tags_update():
+        tags.updatetags(flask.request.form['key'],
+            json.loads(flask.request.form['tags']), flask.request.form['prefix'])
         return 'OK'
     
     @app.route('/adminueqytMXDDS/tags/remove/', methods=['POST'])
     def admin_tags_remove():
-        tags.removetag(flask.request.form['key'], flask.request.form['tag'])
+        tags.removetag(flask.request.form['key'], flask.request.form['tag'],
+            flask.request.form['prefix'])
         return 'OK'
     
     @app.route('/adminueqytMXDDS/tags/get/', methods=['POST'])
     def admin_tags_get():
-        t = tags.gettags(flask.request.form['key'])
+        t = tags.gettags(flask.request.form['key'], flask.request.form['prefix'])
         if t is None:
             return '[]'
         
@@ -318,14 +326,15 @@ def startapp(args):
         for key in db.keys('game:*'):
             events = db.zrange('events_' + key, 0, -1)
             
+            state = json.loads(db[key])
             game = {
                 'key': key,
                 'buyer_log': [],
                 'seller_log': [],
-                'has_chat': False
+                'has_chat': False,
+                'cond': state['condition']
             }
             
-            state = json.loads(db[key])
             for role in ('buyer', 'seller', 'insurer'):
                 game[role] = {}
                 

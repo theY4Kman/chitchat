@@ -139,13 +139,28 @@
             filtertags(tags);
         }
         
-        function addtag(key, tag, callback)
+        function addtag(key, tag, prefix, callback)
         {
-            $.post('add/', {key: key, tag: tag}, callback, 'json');
+            if (prefix == undefined)
+                prefix = '';
+            $.post('add/', {key: key, prefix: prefix, tag: tag}, callback, 'json');
         }
-        function removetag(key, tag, callback)
+        function removetag(key, tag, prefix, callback)
         {
-            $.post('remove/', {key: key, tag: tag}, callback, 'json');
+            if (prefix == undefined)
+                prefix = '';
+            $.post('remove/', {key: key, prefix: prefix, tag: tag}, callback, 'json');
+        }
+        function updatetags(key, tags, prefix, callback)
+        {
+            if (prefix == undefined)
+                prefix = '';
+                
+            var tags_js = '[]';
+            if (tags.length > 0)
+                tags_js = '["' + tags.join('","') + '"]';
+            
+            $.post('update/', {key: key, prefix: prefix, tags: tags_js}, callback, 'json');
         }
         
         function setHasTag(elem)
@@ -164,12 +179,12 @@
             
             if (elem.hasClass('hastag'))
             {
-                removetag(elem.parent().attr('gamekey'), elem.attr('tagname'));
+                removetag(elem.parent().attr('gamekey'), elem.attr('tagname'), 'game');
                 setNoTag(elem);
             }
             else if (elem.hasClass('notag'))
             {
-                addtag(elem.parent().attr('gamekey'), elem.attr('tagname'));
+                addtag(elem.parent().attr('gamekey'), elem.attr('tagname'), 'game');
                 setHasTag(elem);
             }
         }
@@ -312,6 +327,17 @@
             $('#games td[tagname]').click(function() {
                 clickTag($(this));
             });
+            
+            $('textarea.chattags').keypress(function(e)
+            {
+                var code = (e.keyCode ? e.keyCode : e.which);
+                if (code != 13)
+                    return;
+                
+                updatetags($(this).parents('.body').prev().attr('gamekey'), $(this).val().split(','), $(this).attr('prefix'));
+                
+                return false;
+            });
         });
     </script>
     <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
@@ -326,18 +352,18 @@
             <th width="40%">Key</th>
             <th tagname="has_chat">Has chat</td>
             <th tagname="is_mturk">All Mturk</th>
-{%- for tag in tags.gettagnames() %}
+{%- for tag in tags.gettagnames('game') %}
             <th tagname="{{ tag }}">{{ tag }}</th>
 {%- endfor -%}
           </tr>
         </thead>
         <tbody>
 {% for game in games %}          <tr class="head {{ loop.cycle('', 'alt') }}" gamekey="{{ game.key }}">
-            <td><h3>{{ util.gamekey(game.key) }}</h3></td>
+            <td><h3>{{ util.gamekey(game.key) }} - Condition {{ game.cond }}</h3></td>
             <td class="{{ tagclass(game.has_chat) }}" tagname="has_chat">{{ game.has_chat }}</td>
             <td class="{{ tagclass(util.is_game_mturk(util.gamekey(game.key))) }}" tagname="is_mturk">{{ util.is_game_mturk(util.gamekey(game.key)) }}</td>
-{%- for tag in tags.gettagnames() %}
-            <td class="{{ tagclass(tags.hastag(game.key, tag)) }}" tagname="{{ tag }}">{{ tags.hastag(game.key, tag) }}</td>
+{%- for tag in tags.gettagnames('game') %}
+            <td class="{{ tagclass(tags.hastag(game.key, tag, 'game')) }}" tagname="{{ tag }}">{{ tags.hastag(game.key, tag, 'game') }}</td>
 {%- endfor -%}
           </tr>
           <tr class="body">
@@ -348,12 +374,16 @@
                   <div class="chatmessages" id="buyer_chatmessages">{% for evt in game.buyer_log %}
                     <div class="message {{ evt.from }}{% if evt.name != 'chat' %} event{% endif %}">{% if evt.name == 'chat' %}{{ evt.message }}{% else %}*** {{ evt.from|capitalize }} gave {% if evt.name == 'send_token' %}the token{% else %}25c{% endif %} to {{ evt.to|capitalize }}{% endif %}</div>{% endfor %}
                   </div>
+                  <textarea class="chattags" prefix="buyer_insurer" placeholder="Buyer to Mediator tags, CSV">{{ tags.gettags(game.key, 'buyer_insurer')|default([], true)|join(',') }}</textarea>
+                  <textarea class="chattags" prefix="insurer_buyer" placeholder="Mediator to Buyer tags, CSV">{{ tags.gettags(game.key, 'insurer_buyer')|default([], true)|join(',') }}</textarea>
                 </div>
                 <div class="seller_insurer_chat lfloat" style="margin-left: 20px;">
                   <h4>Seller to Mediator</h4>
                   <div class="chatmessages" id="seller_chatmessages">{% for evt in game.seller_log %}
                     <div class="message {{ evt.from }}{% if evt.name != 'chat' %} event{% endif %}">{% if evt.name == 'chat' %}{{ evt.message }}{% else %}*** {{ evt.from|capitalize }} gave {% if evt.name == 'send_token' %}the token{% else %}25c{% endif %} to {{ evt.to|capitalize }}{% endif %}</div>{% endfor %}
                   </div>
+                  <textarea class="chattags" prefix="seller_insurer" placeholder="Seller to Mediator tags, CSV">{{ tags.gettags(game.key, 'seller_insurer')|default([], true)|join(',') }}</textarea>
+                  <textarea class="chattags" prefix="insurer_seller" placeholder="Mediator to Seller tags, CSV">{{ tags.gettags(game.key, 'insurer_seller')|default([], true)|join(',') }}</textarea>
                 </div>
                 <div class="post_questionnaires lfloat">
                   <h4 class="{% if game.insurer.answers.none %}noanswers{% endif %}">Buyer - {{ game.buyer.key }}{% if game.buyer.is_mturk %} (MTURK){% endif %}</h4>
