@@ -64,6 +64,7 @@ class Util(object):
         return json.loads(self.db['game:' + gamekey])
     
     def gameevents(self, gamekey):
+        '''Returns all the events of a game and decodes their JSON'''
         if not self.db.exists('events_game:' + gamekey):
             return None
         return map(json.loads, self.db.zrange('events_game:' + gamekey, 0, -1))

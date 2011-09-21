@@ -1,37 +1,38 @@
+{% macro condition(num) %}{% if num == 1 %}Escrow{% elif num == 2 %}Guarantor{% elif num == 3 %}Arbitrator{% else %}Unknown{% endif %}{% endmacro -%}
 {% macro fmttime(seconds) %}[{{ (seconds / 60)|int }}:{% if (seconds % 60 < 10) %}0{% endif %}{{ (seconds % 60)|int }}]{% endmacro -%}
 {% macro tagclass(boolean) %}{% if boolean == None %}blanktag{% elif boolean %}hastag{% else %}notag{% endif %}{% endmacro -%}
 {% macro answers(user) -%}
-{% if not user.answers.none -%}
-              <ol>
-                <li>
-                  <span class="question">At the end of the game, did you think the situation was fair? Why or why not?</span>
-                  <br />
-                  <blockquote class="answer">{{ user.answers.situation_fair }}</blockquote>
-                </li>
-                <li class="post_seller">
-                  <span class="question">Did you believe the seller was telling the truth? Why or why not?</span>
-                  <br />
-                  <blockquote class="answer">{{ user.answers.seller_truth }}</blockquote>
-                </li>
-                <li class="post_buyer">
-                  <span class="question">Did you believe the buyer was telling the truth? Why or why not?</span>
-                  <br />
-                  <blockquote class="answer">{{ user.answers.buyer_truth }}</blockquote>
-                </li>
-                <li class="post_insurer">
-                  <span class="question">Did you believe the mediator was fair? Why or why not?</span>
-                  <br />
-                  <blockquote class="answer">{{ user.answers.insurer_truth }}</blockquote>
-                </li>
-                <li>
-                  <span class="question">Do you have any other comments about this experiment? We appreciate your feedback.</span>
-                  <br />
-                  <blockquote class="answer">{{ user.answers.comments }}</blockquote>
-                </li>
-              </ol>
-{%- else -%}
-              <span>User did not complete survey.</span>
-{%- endif %}
+{% if not user.answers.none %}
+                    <ol>
+                      <li>
+                        <span class="question">At the end of the game, did you think the situation was fair? Why or why not?</span>
+                        <br />
+                        <blockquote class="answer">{{ user.answers.situation_fair }}</blockquote>
+                      </li>
+                      <li class="post_seller">
+                        <span class="question">Did you believe the seller was telling the truth? Why or why not?</span>
+                        <br />
+                        <blockquote class="answer">{{ user.answers.seller_truth }}</blockquote>
+                      </li>
+                      <li class="post_buyer">
+                        <span class="question">Did you believe the buyer was telling the truth? Why or why not?</span>
+                        <br />
+                        <blockquote class="answer">{{ user.answers.buyer_truth }}</blockquote>
+                      </li>
+                      <li class="post_insurer">
+                        <span class="question">Did you believe the mediator was fair? Why or why not?</span>
+                        <br />
+                        <blockquote class="answer">{{ user.answers.insurer_truth }}</blockquote>
+                      </li>
+                      <li>
+                        <span class="question">Do you have any other comments about this experiment? We appreciate your feedback.</span>
+                        <br />
+                        <blockquote class="answer">{{ user.answers.comments }}</blockquote>
+                      </li>
+                    </ol>
+{%- else %}
+                    <span>User did not complete survey.</span>
+{%- endif -%}
 {% endmacro -%}
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -418,12 +419,12 @@
         </thead>
         <tbody>
 {% for game in games %}          <tr class="head {{ loop.cycle('', 'alt') }}" gamekey="{{ game.key }}">
-            <td><h3>{{ util.gamekey(game.key) }} - Condition {{ game.cond }}</h3></td>
+            <td><h3>{{ util.gamekey(game.key) }} - (Cond {{ game.cond }}) {{ condition(game.cond) }}</h3></td>
             <td class="{{ tagclass(game.has_chat) }}" tagname="has_chat">{{ game.has_chat }}</td>
             <td class="{{ tagclass(util.is_game_mturk(util.gamekey(game.key))) }}" tagname="is_mturk">{{ util.is_game_mturk(util.gamekey(game.key)) }}</td>
 {%- for tag in tags.gettagnames('game') %}
             <td class="{{ tagclass(tags.hastag(game.key, tag, 'game')) }}" tagname="{{ tag }}">{{ tags.hastag(game.key, tag, 'game') }}</td>
-{%- endfor -%}
+{%- endfor %}
           </tr>
           <tr class="body">
             <td colspan="50">
@@ -446,18 +447,15 @@
                 </div>
                 <div class="post_questionnaires lfloat">
                   <h4 class="{% if game.insurer.answers.none %}noanswers{% endif %}">Buyer - {{ game.buyer.key }}{% if game.buyer.is_mturk %} (MTURK){% endif %}</h4>
-                  <div class="post_answers post_buyer">
-      {{ answers(game.buyer) }}
+                  <div class="post_answers post_buyer">{{ answers(game.buyer) }}
                     <textarea class="usertags" prefix="buyer" placeholder="Buyer tags, CSV">{{ tags.gettags(game.key, 'buyer')|default([], true)|join(',') }}</textarea>
                   </div>
                   <h4 class="{% if game.insurer.answers.none %}noanswers{% endif %}">Seller - {{ game.seller.key }}{% if game.seller.is_mturk %} (MTURK){% endif %}</h4>
-                  <div class="post_answers post_seller">
-      {{ answers(game.seller) }}
+                  <div class="post_answers post_seller">{{ answers(game.seller) }}
                     <textarea class="usertags" prefix="seller" placeholder="Seller tags, CSV">{{ tags.gettags(game.key, 'seller')|default([], true)|join(',') }}</textarea>
                   </div>
                   <h4 class="{% if game.insurer.answers.none %}noanswers{% endif %}">Mediator - {{ game.insurer.key }}{% if game.insurer.is_mturk %} (MTURK){% endif %}</h4>
-                  <div class="post_answers post_insurer">
-      {{ answers(game.insurer) }}
+                  <div class="post_answers post_insurer">{{ answers(game.insurer) }}
                     <textarea class="usertags" prefix="insurer" placeholder="Mediator tags, CSV">{{ tags.gettags(game.key, 'insurer')|default([], true)|join(',') }}</textarea>
                   </div>
                 </div>
